@@ -1,0 +1,64 @@
+modules:
+  jira:projectSettingsPage:
+    - key: testrail-test-run-project-settings-page
+      resource: main-settings-page
+      title: TestRail settings
+      render: native
+      resolver: 
+        function: resolver
+  jira:customField:
+    - key: testrail-test-run-custom-field
+      name: TestRail
+      description: Custom field for TestRail's Test Run.
+      type: object
+      formatter: 
+        expression: ""
+      schema:
+        properties:
+          project:
+            type: object
+            searchAlias: Project
+          run:
+            type: object
+            searchAlias: Run
+      render: native
+      resource: main-resource
+      edit:
+        resource: main-resource
+        render: native
+      resolver:
+        function: resolver
+  jira:dashboardGadget:
+    - key: testrail-test-run-dashboard-page
+      title: Test Run Chart
+      description: Sum up TestRail's Test Run in project and output monthly report on dashboard.
+      thumbnail: https://imahiro-t.github.io/testrail-jira-extension/testrail.png
+      resource: main-dashboard-page
+      render: native
+      resolver:
+        function: resolver
+      edit:
+        resource: main-dashboard-page
+        render: native
+  function:
+    - key: resolver
+      handler: index.handler
+resources:
+  - key: main-resource
+    path: src/frontend/index.jsx
+  - key: main-settings-page
+    path: src/frontend/settings/index.jsx
+  - key: main-dashboard-page
+    path: src/frontend/dashboard/index.jsx
+app:
+  runtime:
+    name: nodejs18.x
+  id: ari:cloud:ecosystem::app/2405adc3-4807-4b35-b4cb-a3311886b13a
+permissions:
+  external:
+    fetch:
+      backend:
+        - '*'
+  scopes:
+    - manage:jira-project
+    - read:jira-work
