@@ -1,0 +1,22 @@
+{
+  "name": "testrail-jira-extension",
+  "version": "2.0.6",
+  "main": "index.js",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "lint": "./node_modules/.bin/eslint src/**/* || npm run --silent hook-errors",
+    "hook-errors": "echo '\\x1b[31mThe build failed because a Forge UI hook is being used incorrectly. Forge UI hooks follow the same rules as React Hooks but have their own API definitions. See the Forge documentation for details on how to use Forge UI hooks.\n' && exit 1"
+  },
+  "devDependencies": {
+    "eslint": "^8.56.0",
+    "eslint-plugin-react-hooks": "^4.6.0"
+  },
+  "dependencies": {
+    "@forge/api": "^3.9.0",
+    "@forge/bridge": "^3.5.0",
+    "@forge/react": "^10.5.1",
+    "@forge/resolver": "^1.5.38",
+    "react": "^18.3.1"
+  }
+}
