@@ -29,7 +29,7 @@ const getSettings = async (projectId) => {
 };
 
 const setSettings = async (hostname, email, apiKey, projectId) => {
-  var body = {
+  const body = {
     hostname: hostname,
     email: email,
     apiKey: apiKey,
@@ -45,6 +45,44 @@ const setSettings = async (hostname, email, apiKey, projectId) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(body),
+      }
+    );
+  return response;
+};
+
+const getIssueSettings = async (issueId) => {
+  if (!issueId) {
+    return {};
+  }
+  const response = await api
+    .asUser()
+    .requestJira(
+      route`/rest/api/3/issue/${issueId}/properties/${PROPERTY_KEY}`,
+      {
+        headers: {
+          Accept: "application/json",
+        },
+      }
+    );
+  if (response.status !== 200) {
+    return {};
+  }
+  return (await response.json())["value"];
+};
+
+const setIssueSettings = async (issueId, data) => {
+  data["test"] = "test";
+  const response = await api
+    .asUser()
+    .requestJira(
+      route`/rest/api/3/issue/${issueId}/properties/${PROPERTY_KEY}`,
+      {
+        method: "PUT",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
       }
     );
   return response;
@@ -140,6 +178,16 @@ resolver.define("getSettings", async (req) => {
 resolver.define("setSettings", async (req) => {
   const { hostname, email, apiKey, projectId } = req.payload;
   return await setSettings(hostname, email, apiKey, projectId);
+});
+
+resolver.define("getIssueSettings", async (req) => {
+  const { issueId } = req.payload;
+  return await getIssueSettings(issueId);
+});
+
+resolver.define("setIssueSettings", async (req) => {
+  const { issueId, data } = req.payload;
+  return await setIssueSettings(issueId, data);
 });
 
 resolver.define("getProjects", async (req) => {

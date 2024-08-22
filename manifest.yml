@@ -2,7 +2,7 @@ modules:
   jira:projectSettingsPage:
     - key: testrail-test-run-project-settings-page
       resource: main-settings-page
-      title: TestRail settings
+      title: TestRail Configuration
       render: native
       resolver: 
         function: resolver
@@ -28,12 +28,31 @@ modules:
         render: native
       resolver:
         function: resolver
+  jira:issueAction:
+    - key: testrail-test-run-issue-action
+      resource: main-action
+      resolver:
+        function: resolver
+      render: native
+      title: Test Run Configuration
+  jira:issuePanel:
+    - key: testrail-test-run-issue-panel
+      resource: main-panel
+      resolver:
+        function: resolver
+      render: native
+      title: Test Run
+      icon: https://imahiro-t.github.io/testrail-jira-extension/testrail.png
   function:
     - key: resolver
       handler: index.handler
 resources:
   - key: main-resource
     path: src/frontend/index.jsx
+  - key: main-action
+    path: src/frontend/action/index.jsx
+  - key: main-panel
+    path: src/frontend/panel/index.jsx
   - key: main-settings-page
     path: src/frontend/settings/index.jsx
 app:
@@ -48,3 +67,4 @@ permissions:
   scopes:
     - manage:jira-project
     - read:jira-work
+    - write:jira-work
