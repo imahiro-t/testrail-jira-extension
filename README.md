@@ -1,12 +1,16 @@
 # TestRail's Extension App
 
-Custom field for TestRail's Test Run.
+Issue panel for TestRail's Test Run.
 
 ## Features
 
-- Custom field for TestRail's Test Run.
+- Issue panel for TestRail's Test Run.
 
 ## Release Notes
+
+### 0.0.2
+
+- 💥 Change custom field to issue panel
 
 ### 0.0.1
 
