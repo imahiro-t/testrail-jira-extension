@@ -29,12 +29,16 @@ const getSettings = async (projectId) => {
 };
 
 const setSettings = async (hostname, email, apiKey, projectId) => {
-  var body = {
+  const res = await getUserByEmail(hostname, email, apiKey);
+  if (!res) {
+    return false;
+  }
+  const body = {
     hostname: hostname,
     email: email,
     apiKey: apiKey,
   };
-  const response = await api
+  await api
     .asUser()
     .requestJira(
       route`/rest/api/3/project/${projectId}/properties/${PROPERTY_KEY}`,
@@ -47,13 +51,30 @@ const setSettings = async (hostname, email, apiKey, projectId) => {
         body: JSON.stringify(body),
       }
     );
-  return response;
+  return true;
 };
 
-const getProjects = async (projectId) => {
-  const { hostname, email, apiKey } = await getSettings(projectId);
+const getUserByEmail = async (hostname, email, apiKey) => {
   if (!(hostname && email && apiKey)) {
     return null;
+  }
+  const authorization = createAuthorizationHeader(email, apiKey);
+  const endpoint = `https://${hostname}/index.php?/api/v2/get_user_by_email&email=${email}`;
+  const res = await fetch(endpoint, {
+    headers: {
+      Authorization: authorization,
+      "Content-Type": "application/json",
+    },
+  });
+  if (!res.ok) {
+    return null;
+  }
+  return await res.json();
+};
+
+const getProjects = async (hostname, email, apiKey) => {
+  if (!(hostname && email && apiKey)) {
+    return [];
   }
   const authorization = createAuthorizationHeader(email, apiKey);
   const endpoint = `https://${hostname}/index.php?/api/v2/get_projects`;
@@ -64,15 +85,14 @@ const getProjects = async (projectId) => {
     },
   });
   if (!res.ok) {
-    return null;
+    return [];
   }
   return (await res.json())["projects"];
 };
 
-const getRuns = async (projectId, testRailProjectId) => {
-  const { hostname, email, apiKey } = await getSettings(projectId);
-  if (!(hostname && email && apiKey)) {
-    return null;
+const getRuns = async (hostname, email, apiKey, testRailProjectId) => {
+  if (!(hostname && email && apiKey && testRailProjectId)) {
+    return [];
   }
   const authorization = createAuthorizationHeader(email, apiKey);
   const endpoint = `https://${hostname}/index.php?/api/v2/get_runs/${testRailProjectId}`;
@@ -83,18 +103,14 @@ const getRuns = async (projectId, testRailProjectId) => {
     },
   });
   if (!res.ok) {
-    return null;
+    return [];
   }
   return (await res.json())["runs"];
 };
 
-const getRun = async (projectId, runId) => {
-  if (!(projectId && runId)) {
-    return null;
-  }
-  const { hostname, email, apiKey } = await getSettings(projectId);
-  if (!(hostname && email && apiKey)) {
-    return null;
+const getRun = async (hostname, email, apiKey, runId) => {
+  if (!(hostname && email && apiKey && runId)) {
+    return {};
   }
   const authorization = createAuthorizationHeader(email, apiKey);
   const endpoint = `https://${hostname}/index.php?/api/v2/get_run/${runId}`;
@@ -105,18 +121,15 @@ const getRun = async (projectId, runId) => {
     },
   });
   if (!res.ok) {
-    return null;
+    return {};
   }
   const run = await res.json();
   run["test_run_url"] = `https://${hostname}/index.php?/runs/view/${runId}`;
   return run;
 };
 
-const getTestRunInfo = async (projectId, runId) => {
-  if (!(projectId && runId)) {
-    return {};
-  }
-  const run = await getRun(projectId, runId);
+const getTestRunInfo = async (hostname, email, apiKey, runId) => {
+  const run = await getRun(hostname, email, apiKey, runId);
   if (!run) {
     return {};
   }
@@ -144,17 +157,23 @@ resolver.define("setSettings", async (req) => {
 
 resolver.define("getProjects", async (req) => {
   const { projectId } = req.payload;
-  return await getProjects(projectId);
+  const { hostname, email, apiKey } = await getSettings(projectId);
+  return await getProjects(hostname, email, apiKey);
 });
 
 resolver.define("getRuns", async (req) => {
   const { projectId, testRailProjectId } = req.payload;
-  return await getRuns(projectId, testRailProjectId);
+  const { hostname, email, apiKey } = await getSettings(projectId);
+  return await getRuns(hostname, email, apiKey, testRailProjectId);
 });
 
 resolver.define("getTestRunInfo", async (req) => {
   const { projectId, runId } = req.payload;
-  return await getTestRunInfo(projectId, runId);
+  const { hostname, email, apiKey } = await getSettings(projectId);
+  if (!(hostname && email && apiKey)) {
+    return false;
+  }
+  return await getTestRunInfo(hostname, email, apiKey, runId);
 });
 
 export const handler = resolver.getDefinitions();

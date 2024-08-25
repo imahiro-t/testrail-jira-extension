@@ -3,6 +3,8 @@ import ForgeReconciler from "@forge/react";
 import { useProductContext } from "@forge/react";
 import {
   Form,
+  SectionMessage,
+  Text,
   Label,
   Textfield,
   useForm,
@@ -18,27 +20,34 @@ const FIELD_NAME_EMAIL = "FIELD_NAME_EMAIL";
 const FIELD_NAME_API_KEY = "FIELD_NAME_API_KEY";
 
 const App = () => {
+  const context = useProductContext();
+  if (!context) {
+    return " ";
+  }
+  const {
+    extension: { project },
+  } = context;
+  return <Edit project={project} />;
+};
+
+const Edit = ({ project }) => {
   const [hostname, setHostname] = useState();
   const [email, setEmail] = useState();
   const [apiKey, setApiKey] = useState();
   const [projectId, setProjectId] = useState();
   const [isLoading, setIsLoading] = useState(false);
+  const [isInvalid, setIsInvalid] = useState(false);
   const { handleSubmit, register, getFieldId, formState } = useForm();
-  const context = useProductContext();
+
   useEffect(() => {
-    if (context) {
-      const id = context.extension.project.id;
-      setProjectId(id);
-      invoke("getSettings", { projectId: id }).then((settings) => {
-        setHostname(settings["hostname"]);
-        setEmail(settings["email"]);
-        setApiKey(settings["apiKey"]);
-      });
-    }
-  }, [context]);
-  if (!context) {
-    return " ";
-  }
+    const id = project.id;
+    setProjectId(id);
+    invoke("getSettings", { projectId: id }).then((settings) => {
+      setHostname(settings["hostname"]);
+      setEmail(settings["email"]);
+      setApiKey(settings["apiKey"]);
+    });
+  }, []);
 
   const onSubmit = async (data) => {
     try {
@@ -52,14 +61,16 @@ const App = () => {
       if (!data[FIELD_NAME_API_KEY]) {
         data[FIELD_NAME_API_KEY] = apiKey;
       }
-      await invoke("setSettings", {
+      const res = await invoke("setSettings", {
         hostname: data[FIELD_NAME_HOSTNAME],
         email: data[FIELD_NAME_EMAIL],
         apiKey: data[FIELD_NAME_API_KEY],
         projectId: projectId,
       });
+      setIsInvalid(!res);
       setIsLoading(false);
     } catch (e) {
+      setIsInvalid(true);
       setIsLoading(false);
       console.error(e);
     }
@@ -79,6 +90,11 @@ const App = () => {
 
   return (
     <Form onSubmit={handleSubmit(onSubmit)}>
+      {isInvalid && (
+        <SectionMessage appearance="error">
+          <Text>An error occurred while saving. Please check your input.</Text>
+        </SectionMessage>
+      )}
       <FormSection>
         <Label labelFor={getFieldId(FIELD_NAME_HOSTNAME)}>
           TestRail Hostname
@@ -86,7 +102,7 @@ const App = () => {
         <Textfield
           {...register(FIELD_NAME_HOSTNAME, {})}
           onChange={handleHostnameChange}
-          placeholder={hostname}
+          placeholder={hostname ?? "example.testrail.com"}
         />
         <Label labelFor={getFieldId(FIELD_NAME_EMAIL)}>
           TestRail User Email

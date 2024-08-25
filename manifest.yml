@@ -2,38 +2,24 @@ modules:
   jira:projectSettingsPage:
     - key: testrail-test-run-project-settings-page
       resource: main-settings-page
-      title: TestRail settings
+      title: TestRail Configuration
       render: native
       resolver: 
         function: resolver
-  jira:customField:
-    - key: testrail-test-run-custom-field
-      name: TestRail
-      description: Custom field for TestRail's Test Run.
-      type: object
-      formatter: 
-        expression: ""
-      schema:
-        properties:
-          project:
-            type: object
-            searchAlias: Project
-          run:
-            type: object
-            searchAlias: Run
-      render: native
-      resource: main-resource
-      edit:
-        resource: main-resource
-        render: native
+  jira:issuePanel:
+    - key: testrail-test-run-issue-panel
+      resource: main-panel
       resolver:
         function: resolver
+      render: native
+      title: Test Run
+      icon: https://imahiro-t.github.io/testrail-jira-extension/testrail.png
   function:
     - key: resolver
       handler: index.handler
 resources:
-  - key: main-resource
-    path: src/frontend/index.jsx
+  - key: main-panel
+    path: src/frontend/panel/index.jsx
   - key: main-settings-page
     path: src/frontend/settings/index.jsx
 app:
@@ -48,3 +34,4 @@ permissions:
   scopes:
     - manage:jira-project
     - read:jira-work
+    - write:jira-work
