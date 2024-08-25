@@ -32,9 +32,9 @@ const App = () => {
     return " ";
   }
   const {
-    extension: { project },
+    extension: { project, issue },
   } = context;
-  return <View project={project} />;
+  return <View project={project} issue={issue} />;
 };
 
 const color = (testRunInfo) => {
@@ -67,7 +67,7 @@ const color = (testRunInfo) => {
 
 const ISSUE_PROPERTY_KEY = "test_run";
 
-const View = ({ project }) => {
+const View = ({ project, issue }) => {
   const [property, setProperty] = useIssueProperty(ISSUE_PROPERTY_KEY, {});
   const [testRunInfo, setTestRunInfo] = useState();
   const [isOpen, setIsOpen] = useState(false);
@@ -76,20 +76,21 @@ const View = ({ project }) => {
   const closeModal = () => setIsOpen(false);
 
   useEffect(() => {
-    if (property) {
-      invokeGetTestRunInfo(project.id, property.run_id);
+    if (property && project && issue) {
+      invokeGetTestRunInfo(project.id, issue.id, property.run_id);
     }
-  }, [property]);
+  }, [property, project, issue]);
 
   useEffect(() => {
     events.on("test_run_settings.change", (data) => {
-      invokeGetTestRunInfo(project.id, data.run_id);
+      invokeGetTestRunInfo(project.id, issue.id, data.run_id);
     });
   }, []);
 
-  const invokeGetTestRunInfo = (projectId, runId) => {
+  const invokeGetTestRunInfo = (projectId, issueId, runId) => {
     invoke("getTestRunInfo", {
       projectId: projectId,
+      issueId: issueId,
       runId: runId,
     }).then((data) => {
       if (data) {

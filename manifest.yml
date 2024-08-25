@@ -14,6 +14,26 @@ modules:
       render: native
       title: Test Run
       icon: https://imahiro-t.github.io/testrail-jira-extension/testrail.png
+  jira:entityProperty:
+    - key: "testrail-test-run-issue-status-property"
+      entityType: "issue"
+      propertyKey: test_run_results
+      values:
+        - path: passed
+          type: number
+          searchAlias: TestRunPassed
+        - path: blocked
+          type: number
+          searchAlias: TestRunBlocked
+        - path: untested
+          type: number
+          searchAlias: TestRunUntested
+        - path: retest
+          type: number
+          searchAlias: TestRunRetest
+        - path: failed
+          type: number
+          searchAlias: TestRunFailed
   function:
     - key: resolver
       handler: index.handler

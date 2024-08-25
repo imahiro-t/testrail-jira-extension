@@ -3,6 +3,7 @@ import { fetch } from "@forge/api";
 import api, { route } from "@forge/api";
 
 const PROPERTY_KEY = "testrail_settings_key";
+const TEST_RUN_RESULTS_KEY = "test_run_results";
 
 const createAuthorizationHeader = (email, apiKey) => {
   return `Basic ${btoa(email + ":" + apiKey)}`;
@@ -42,6 +43,36 @@ const setSettings = async (hostname, email, apiKey, projectId) => {
     .asUser()
     .requestJira(
       route`/rest/api/3/project/${projectId}/properties/${PROPERTY_KEY}`,
+      {
+        method: "PUT",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      }
+    );
+  return true;
+};
+
+const setTestRunResults = async (run, results, issueId) => {
+  const minimizedResults = results.map((result) => ({
+    created_on: result["created_on"],
+    status_id: result["status_id"],
+    test_id: result["test_id"],
+  }));
+  const body = {
+    results: minimizedResults,
+    passed: run["passed_count"],
+    blocked: run["blocked_count"],
+    untested: run["untested_count"],
+    retest: run["retest_count"],
+    failed: run["failed_count"],
+  };
+  await api
+    .asUser()
+    .requestJira(
+      route`/rest/api/3/issue/${issueId}/properties/${TEST_RUN_RESULTS_KEY}`,
       {
         method: "PUT",
         headers: {
@@ -128,11 +159,34 @@ const getRun = async (hostname, email, apiKey, runId) => {
   return run;
 };
 
-const getTestRunInfo = async (hostname, email, apiKey, runId) => {
+const getResultsForRun = async (hostname, email, apiKey, runId) => {
+  if (!(hostname && email && apiKey && runId)) {
+    return {};
+  }
+  const authorization = createAuthorizationHeader(email, apiKey);
+  const endpoint = `https://${hostname}/index.php?/api/v2/get_results_for_run/${runId}`;
+  const res = await fetch(endpoint, {
+    headers: {
+      Authorization: authorization,
+      "Content-Type": "application/json",
+    },
+  });
+  if (!res.ok) {
+    return {};
+  }
+  const run = await res.json();
+  run["test_run_url"] = `https://${hostname}/index.php?/runs/view/${runId}`;
+  return run["results"];
+};
+
+const getTestRunInfo = async (hostname, email, apiKey, runId, issueId) => {
   const run = await getRun(hostname, email, apiKey, runId);
   if (!run) {
     return {};
   }
+  const results =
+    (await getResultsForRun(hostname, email, apiKey, runId)) ?? [];
+  await setTestRunResults(run, results, issueId);
   return {
     passedCount: run["passed_count"],
     blockedCount: run["blocked_count"],
@@ -168,12 +222,12 @@ resolver.define("getRuns", async (req) => {
 });
 
 resolver.define("getTestRunInfo", async (req) => {
-  const { projectId, runId } = req.payload;
+  const { projectId, issueId, runId } = req.payload;
   const { hostname, email, apiKey } = await getSettings(projectId);
   if (!(hostname && email && apiKey)) {
     return false;
   }
-  return await getTestRunInfo(hostname, email, apiKey, runId);
+  return await getTestRunInfo(hostname, email, apiKey, runId, issueId);
 });
 
 export const handler = resolver.getDefinitions();
