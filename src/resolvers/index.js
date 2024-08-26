@@ -161,7 +161,7 @@ const getRun = async (hostname, email, apiKey, runId) => {
 
 const getResultsForRun = async (hostname, email, apiKey, runId) => {
   if (!(hostname && email && apiKey && runId)) {
-    return {};
+    return [];
   }
   const authorization = createAuthorizationHeader(email, apiKey);
   const endpoint = `https://${hostname}/index.php?/api/v2/get_results_for_run/${runId}`;
@@ -172,7 +172,7 @@ const getResultsForRun = async (hostname, email, apiKey, runId) => {
     },
   });
   if (!res.ok) {
-    return {};
+    return [];
   }
   const run = await res.json();
   run["test_run_url"] = `https://${hostname}/index.php?/runs/view/${runId}`;
@@ -184,8 +184,7 @@ const getTestRunInfo = async (hostname, email, apiKey, runId, issueId) => {
   if (!run) {
     return {};
   }
-  const results =
-    (await getResultsForRun(hostname, email, apiKey, runId)) ?? [];
+  const results = await getResultsForRun(hostname, email, apiKey, runId);
   await setTestRunResults(run, results, issueId);
   return {
     passedCount: run["passed_count"],
