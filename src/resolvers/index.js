@@ -193,6 +193,7 @@ const getTestRunInfo = async (hostname, email, apiKey, runId, issueId) => {
     retestCount: run["retest_count"],
     failedCount: run["failed_count"],
     url: run["test_run_url"],
+    name: run["name"],
   };
 };
 

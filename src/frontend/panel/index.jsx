@@ -8,6 +8,7 @@ import ForgeReconciler, {
   Button,
   SectionMessage,
   Text,
+  Em,
   useProductContext,
   useIssueProperty,
   Modal,
@@ -103,43 +104,47 @@ const View = ({ project, issue }) => {
 
   return testRunInfo ? (
     <>
-      <Box padding="space.050" backgroundColor={color(testRunInfo)}>
-        <Inline spread="space-between" alignBlock="center">
-          <Inline space="space.050" alignBlock="center" shouldWrap>
-            {testRunInfo.url && (
-              <>
-                <Lozenge appearance="success" isBold>
-                  {"Passed: " + (testRunInfo.passedCount || 0)}
-                </Lozenge>
-                <Lozenge appearance="default" isBold>
-                  {"Blocked: " + (testRunInfo.blockedCount || 0)}
-                </Lozenge>
-                <Lozenge appearance="moved" isBold>
-                  {"Retest: " + (testRunInfo.retestCount || 0)}
-                </Lozenge>
-                <Lozenge appearance="removed" isBold>
-                  {"Failed: " + (testRunInfo.failedCount || 0)}
-                </Lozenge>
-                <Lozenge appearance="default">
-                  {"Untested: " + (testRunInfo.untestedCount || 0)}
-                </Lozenge>
-                <Link href={`${testRunInfo.url || ""}`} openNewTab={true}>
-                  <Icon glyph="shortcut" label="Shortcut" size="small" />
-                </Link>
-              </>
-            )}
-          </Inline>
-          <Inline alignBlock="center">
-            <Button
-              appearance="subtle"
-              iconAfter="settings"
-              spacing="compact"
-              onClick={openModal}
-              shouldWrap
-            ></Button>
-          </Inline>
+      <Box>
+        <Inline alignBlock="center" alignInline="end">
+          <Button
+            appearance="subtle"
+            iconAfter="settings"
+            spacing="compact"
+            onClick={openModal}
+          ></Button>
         </Inline>
       </Box>
+      {testRunInfo.url && testRunInfo.name && (
+        <Box padding="space.050" backgroundColor={color(testRunInfo)}>
+          <>
+            <Inline space="space.050" alignBlock="center" shouldWrap>
+              <Text>
+                <Em>{testRunInfo.name}</Em>
+              </Text>
+            </Inline>
+            <Inline space="space.050" alignBlock="center" shouldWrap>
+              <Lozenge appearance="success" isBold>
+                {"Passed: " + (testRunInfo.passedCount || 0)}
+              </Lozenge>
+              <Lozenge appearance="default" isBold>
+                {"Blocked: " + (testRunInfo.blockedCount || 0)}
+              </Lozenge>
+              <Lozenge appearance="moved" isBold>
+                {"Retest: " + (testRunInfo.retestCount || 0)}
+              </Lozenge>
+              <Lozenge appearance="removed" isBold>
+                {"Failed: " + (testRunInfo.failedCount || 0)}
+              </Lozenge>
+              <Lozenge appearance="default">
+                {"Untested: " + (testRunInfo.untestedCount || 0)}
+              </Lozenge>
+              <Link href={`${testRunInfo.url}`} openNewTab={true}>
+                <Icon glyph="shortcut" label="Shortcut" size="small" />
+              </Link>
+            </Inline>
+          </>
+        </Box>
+      )}
       <ModalTransition>
         {isOpen && (
           <Edit
