@@ -9,14 +9,9 @@ import ForgeReconciler, {
   SectionMessage,
   Text,
   Em,
+  Strong,
   useProductContext,
   useIssueProperty,
-  Modal,
-  ModalBody,
-  ModalTransition,
-  ModalTitle,
-  ModalFooter,
-  ModalHeader,
   Form,
   Label,
   Select,
@@ -73,8 +68,8 @@ const View = ({ project, issue }) => {
   const [testRunInfo, setTestRunInfo] = useState();
   const [isOpen, setIsOpen] = useState(false);
   const [isInvalid, setIsInvalid] = useState(false);
-  const openModal = () => setIsOpen(true);
-  const closeModal = () => setIsOpen(false);
+  const openConfiguration = () => setIsOpen(true);
+  const closeConfiguration = () => setIsOpen(false);
 
   useEffect(() => {
     if (property && project && issue) {
@@ -104,16 +99,6 @@ const View = ({ project, issue }) => {
 
   return testRunInfo ? (
     <>
-      <Box>
-        <Inline alignBlock="center" alignInline="end">
-          <Button
-            appearance="subtle"
-            iconAfter="settings"
-            spacing="compact"
-            onClick={openModal}
-          ></Button>
-        </Inline>
-      </Box>
       {testRunInfo.url && testRunInfo.name && (
         <Box padding="space.050" backgroundColor={color(testRunInfo)}>
           <>
@@ -145,16 +130,31 @@ const View = ({ project, issue }) => {
           </>
         </Box>
       )}
-      <ModalTransition>
-        {isOpen && (
+      {!isOpen && (
+        <Box>
+          <Inline alignBlock="center" alignInline="end">
+            <Button
+              appearance="subtle"
+              iconAfter="settings"
+              spacing="compact"
+              onClick={openConfiguration}
+            ></Button>
+          </Inline>
+        </Box>
+      )}
+      {isOpen && (
+        <Box
+          padding="space.050"
+          backgroundColor={"color.background.accent.gray.subtlest"}
+        >
           <Edit
             project={project}
             property={property}
             setProperty={setProperty}
-            closeModal={closeModal}
+            closeConfiguration={closeConfiguration}
           />
-        )}
-      </ModalTransition>{" "}
+        </Box>
+      )}
     </>
   ) : (
     <>
@@ -174,7 +174,7 @@ const View = ({ project, issue }) => {
 const FIELD_NAME_PROJECT = "FIELD_NAME_PROJECT";
 const FIELD_NAME_RUN = "FIELD_NAME_RUN";
 
-const Edit = ({ project, property, setProperty, closeModal }) => {
+const Edit = ({ project, property, setProperty, closeConfiguration }) => {
   const [projectResponseJson, setProjectResponseJson] = useState();
   const [runResponseJson, setRunResponseJson] = useState();
   const [selectedProject, setSelectedProject] = useState();
@@ -226,7 +226,7 @@ const Edit = ({ project, property, setProperty, closeModal }) => {
       await setProperty(data);
       events.emit("test_run_settings.change", data);
       setIsLoading(false);
-      closeModal();
+      closeConfiguration();
     } catch (e) {
       setIsLoading(false);
       console.error(e);
@@ -242,62 +242,58 @@ const Edit = ({ project, property, setProperty, closeModal }) => {
   };
 
   return (
-    <Modal onClose={closeModal} shouldScrollInViewport={true}>
-      <Form onSubmit={handleSubmit(onSubmit)}>
-        <ModalHeader>
-          <ModalTitle>Test Run Configuration</ModalTitle>
-        </ModalHeader>
-        <ModalBody>
-          <Box>
-            <Label labelFor={getFieldId(FIELD_NAME_PROJECT)}>
-              Project
-              <RequiredAsterisk />
-            </Label>
-            <Select
-              {...register(FIELD_NAME_PROJECT, {})}
-              appearance="default"
-              name={FIELD_NAME_PROJECT}
-              options={projectOptions}
-              onChange={handleProjectChange}
-              defaultValue={property.project}
-              isClearable={true}
-            />
-            <Label labelFor={getFieldId(FIELD_NAME_RUN)}>
-              Test Run
-              <RequiredAsterisk />
-            </Label>
-            <Select
-              {...register(FIELD_NAME_RUN, {})}
-              appearance="default"
-              name={FIELD_NAME_RUN}
-              options={runOptions}
-              onChange={handleRunChange}
-              defaultValue={property.run}
-              isClearable={true}
-            />
-          </Box>
-        </ModalBody>
-        <ModalFooter>
-          <ButtonGroup>
-            <Button onClick={closeModal} appearance="subtle">
-              Cancel
-            </Button>
-            <LoadingButton
-              appearance="primary"
-              type="submit"
-              isLoading={isLoading}
-              isDisabled={
-                (selectedProject && !selectedRun) ||
-                (!selectedProject && selectedRun) ||
-                formState.isSubmitting
-              }
-            >
-              Save
-            </LoadingButton>
-          </ButtonGroup>
-        </ModalFooter>
-      </Form>
-    </Modal>
+    <Form onSubmit={handleSubmit(onSubmit)}>
+      <Text>
+        <Strong>Configuration</Strong>
+      </Text>
+      <Box padding="space.050">
+        <Label labelFor={getFieldId(FIELD_NAME_PROJECT)}>
+          Project
+          <RequiredAsterisk />
+        </Label>
+        <Select
+          {...register(FIELD_NAME_PROJECT, {})}
+          appearance="default"
+          name={FIELD_NAME_PROJECT}
+          options={projectOptions}
+          onChange={handleProjectChange}
+          defaultValue={property.project}
+          isClearable={true}
+        />
+        <Label labelFor={getFieldId(FIELD_NAME_RUN)}>
+          Test Run
+          <RequiredAsterisk />
+        </Label>
+        <Select
+          {...register(FIELD_NAME_RUN, {})}
+          appearance="default"
+          name={FIELD_NAME_RUN}
+          options={runOptions}
+          onChange={handleRunChange}
+          defaultValue={property.run}
+          isClearable={true}
+        />
+      </Box>
+      <Box padding="space.050">
+        <ButtonGroup>
+          <LoadingButton
+            appearance="primary"
+            type="submit"
+            isLoading={isLoading}
+            isDisabled={
+              (selectedProject && !selectedRun) ||
+              (!selectedProject && selectedRun) ||
+              formState.isSubmitting
+            }
+          >
+            Save
+          </LoadingButton>
+          <Button onClick={closeConfiguration} appearance="subtle">
+            Cancel
+          </Button>
+        </ButtonGroup>
+      </Box>
+    </Form>
   );
 };
 
