@@ -39,7 +39,7 @@ const setSettings = async (hostname, email, apiKey, projectId) => {
     email: email,
     apiKey: apiKey,
   };
-  await api
+  const response = await api
     .asUser()
     .requestJira(
       route`/rest/api/3/project/${projectId}/properties/${PROPERTY_KEY}`,
@@ -52,6 +52,27 @@ const setSettings = async (hostname, email, apiKey, projectId) => {
         body: JSON.stringify(body),
       }
     );
+  if (response.status !== 200 && response.status !== 201) {
+    return false;
+  }
+  return true;
+};
+
+const deleteSettings = async (projectId) => {
+  if (!projectId) {
+    return false;
+  }
+  const response = await api
+    .asUser()
+    .requestJira(
+      route`/rest/api/3/project/${projectId}/properties/${PROPERTY_KEY}`,
+      {
+        method: "DELETE",
+      }
+    );
+  if (response.status !== 204) {
+    return false;
+  }
   return true;
 };
 
@@ -207,6 +228,11 @@ resolver.define("getSettings", async (req) => {
 resolver.define("setSettings", async (req) => {
   const { hostname, email, apiKey, projectId } = req.payload;
   return await setSettings(hostname, email, apiKey, projectId);
+});
+
+resolver.define("deleteSettings", async (req) => {
+  const { projectId } = req.payload;
+  return await deleteSettings(projectId);
 });
 
 resolver.define("getProjects", async (req) => {

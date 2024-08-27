@@ -34,9 +34,12 @@ const Edit = ({ project }) => {
   const [hostname, setHostname] = useState();
   const [email, setEmail] = useState();
   const [apiKey, setApiKey] = useState();
+  const [isExist, setIsExist] = useState(false);
   const [projectId, setProjectId] = useState();
   const [isLoading, setIsLoading] = useState(false);
+  const [isDeleteLoading, setIsDeleteLoading] = useState(false);
   const [isInvalid, setIsInvalid] = useState(false);
+  const [isDeleteInvalid, setIsDeleteInvalid] = useState(false);
   const { handleSubmit, register, getFieldId, formState } = useForm();
 
   useEffect(() => {
@@ -46,21 +49,20 @@ const Edit = ({ project }) => {
       setHostname(settings["hostname"]);
       setEmail(settings["email"]);
       setApiKey(settings["apiKey"]);
+      setIsExist(
+        settings["hostname"] && settings["email"] && settings["apiKey"]
+      );
     });
   }, []);
 
   const onSubmit = async (data) => {
     try {
+      setIsInvalid(false);
+      setIsDeleteInvalid(false);
       setIsLoading(true);
-      if (!data[FIELD_NAME_HOSTNAME]) {
-        data[FIELD_NAME_HOSTNAME] = hostname;
-      }
-      if (!data[FIELD_NAME_EMAIL]) {
-        data[FIELD_NAME_EMAIL] = email;
-      }
-      if (!data[FIELD_NAME_API_KEY]) {
-        data[FIELD_NAME_API_KEY] = apiKey;
-      }
+      data[FIELD_NAME_HOSTNAME] = hostname;
+      data[FIELD_NAME_EMAIL] = email;
+      data[FIELD_NAME_API_KEY] = apiKey;
       const res = await invoke("setSettings", {
         hostname: data[FIELD_NAME_HOSTNAME],
         email: data[FIELD_NAME_EMAIL],
@@ -69,9 +71,34 @@ const Edit = ({ project }) => {
       });
       setIsInvalid(!res);
       setIsLoading(false);
+      if (res) {
+        setIsExist(true);
+      }
     } catch (e) {
       setIsInvalid(true);
       setIsLoading(false);
+      console.error(e);
+    }
+  };
+
+  const deleteSetting = async () => {
+    try {
+      setIsInvalid(false);
+      setIsDeleteInvalid(false);
+      setIsDeleteLoading(true);
+      const res = await invoke("deleteSettings", {
+        projectId: projectId,
+      });
+      setIsDeleteInvalid(!res);
+      setIsDeleteLoading(false);
+      if (res) {
+        setHostname("");
+        setEmail("");
+        setIsExist(false);
+      }
+    } catch (e) {
+      setIsDeleteInvalid(true);
+      setIsDeleteLoading(false);
       console.error(e);
     }
   };
@@ -95,6 +122,11 @@ const Edit = ({ project }) => {
           <Text>An error occurred while saving. Please check your input.</Text>
         </SectionMessage>
       )}
+      {isDeleteInvalid && (
+        <SectionMessage appearance="error">
+          <Text>An error occurred while deleting.</Text>
+        </SectionMessage>
+      )}
       <FormSection>
         <Label labelFor={getFieldId(FIELD_NAME_HOSTNAME)}>
           TestRail Hostname
@@ -103,6 +135,7 @@ const Edit = ({ project }) => {
           {...register(FIELD_NAME_HOSTNAME, {})}
           onChange={handleHostnameChange}
           placeholder={hostname ?? "example.testrail.com"}
+          value={hostname}
         />
         <Label labelFor={getFieldId(FIELD_NAME_EMAIL)}>
           TestRail User Email
@@ -110,7 +143,7 @@ const Edit = ({ project }) => {
         <Textfield
           {...register(FIELD_NAME_EMAIL, {})}
           onChange={handleEmailChange}
-          placeholder={email}
+          value={email}
         />
         <Label labelFor={getFieldId(FIELD_NAME_API_KEY)}>
           TestRail API Key
@@ -118,17 +151,28 @@ const Edit = ({ project }) => {
         <Textfield
           {...register(FIELD_NAME_API_KEY, {})}
           onChange={handleApiKeyChange}
-          placeholder={apiKey ? "**********" : ""}
+          placeholder={apiKey ? "****************" : ""}
         />
       </FormSection>
       <FormFooter>
         <ButtonGroup>
           <LoadingButton
+            appearance="danger"
+            type="button"
+            onClick={deleteSetting}
+            isLoading={isDeleteLoading}
+            isDisabled={formState.isSubmitting || isDeleteLoading || !isExist}
+          >
+            Delete
+          </LoadingButton>
+          <LoadingButton
             appearance="primary"
             type="submit"
             isLoading={isLoading}
             isDisabled={
-              !(hostname && email && apiKey) || formState.isSubmitting
+              !(hostname && email && apiKey) ||
+              formState.isSubmitting ||
+              isDeleteLoading
             }
           >
             Save
