@@ -227,7 +227,16 @@ resolver.define("getSettings", async (req) => {
 
 resolver.define("setSettings", async (req) => {
   const { hostname, email, apiKey, projectId } = req.payload;
-  return await setSettings(hostname, email, apiKey, projectId);
+  let fixedHostname = hostname;
+  try {
+    if (
+      fixedHostname.startsWith("https://") ||
+      fixedHostname.startsWith("http://")
+    ) {
+      fixedHostname = new URL(fixedHostname).hostname;
+    }
+  } catch (e) {}
+  return await setSettings(fixedHostname, email, apiKey, projectId);
 });
 
 resolver.define("deleteSettings", async (req) => {
