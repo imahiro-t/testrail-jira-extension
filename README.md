@@ -1,4 +1,4 @@
-# TestRail's Extension App
+# TestRail Extension for Jira
 
 Issue panel for TestRail's Test Run.
 

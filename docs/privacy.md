@@ -2,7 +2,7 @@
 
 ## 1. Introduction
 
-[erin] ("Company", "we", "us", or "our") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use the [TestRail JIRA extension] ("Extension"). By using the Extension, you agree to the terms of this Privacy Policy.
+[erin] ("Company", "we", "us", or "our") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use the [TestRail Extension for Jira] ("Extension"). By using the Extension, you agree to the terms of this Privacy Policy.
 
 ## 2. Information We Collect
 

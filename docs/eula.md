@@ -2,7 +2,7 @@
 
 ## 1. Introduction
 
-This End User License Agreement ("EULA") is a legal agreement between you ("User") and [erin] ("Company") for the use of the [TestRail JIRA extension] ("Extension"). By installing or using the Extension, you agree to be bound by the terms of this EULA.
+This End User License Agreement ("EULA") is a legal agreement between you ("User") and [erin] ("Company") for the use of the [TestRail Extension for Jira] ("Extension"). By installing or using the Extension, you agree to be bound by the terms of this EULA.
 
 ## 2. License Grant
 
