@@ -8,7 +8,7 @@ import ForgeReconciler, {
   Button,
   SectionMessage,
   Text,
-  Em,
+  Heading,
   Strong,
   useProductContext,
   useIssueProperty,
@@ -103,9 +103,7 @@ const View = ({ project, issue }) => {
         <Box padding="space.050" backgroundColor={color(testRunInfo)}>
           <>
             <Inline space="space.050" alignBlock="center" shouldWrap>
-              <Text>
-                <Em>{testRunInfo.name}</Em>
-              </Text>
+              <Heading as="h6">{testRunInfo.name}</Heading>
             </Inline>
             <Inline space="space.050" alignBlock="center" shouldWrap>
               <Lozenge appearance="success" isBold>
