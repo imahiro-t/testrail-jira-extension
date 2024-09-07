@@ -1,32 +1,30 @@
 import React, { useEffect, useState } from "react";
-import ForgeReconciler, {
-  Lozenge,
-  Link,
-  Icon,
-  Box,
-  Inline,
-  Button,
-  SectionMessage,
-  Text,
-  Heading,
-  Strong,
-  useProductContext,
-  useIssueProperty,
-  Form,
-  Label,
-  Select,
-  useForm,
-  ButtonGroup,
-  LoadingButton,
-  RequiredAsterisk,
-} from "@forge/react";
-import { invoke, events } from "@forge/bridge";
+
+import { Box, Inline, Stack, Text } from "@atlaskit/primitives";
+import { ButtonGroup } from "@atlaskit/button";
+import Button, { IconButton } from "@atlaskit/button/new";
+import Lozenge from "@atlaskit/lozenge";
+import SettingsIcon from "@atlaskit/icon/glyph/settings";
+import ShortcutIcon from "@atlaskit/icon/glyph/shortcut";
+import SectionMessage from "@atlaskit/section-message";
+import Select from "@atlaskit/select";
+
+import { useThemeObserver } from "@atlaskit/tokens";
+import { invoke, view, router, events } from "@forge/bridge";
 
 const App = () => {
-  const context = useProductContext();
+  const [context, setContext] = useState();
+  const theme = useThemeObserver();
+  useEffect(async () => {
+    await view.theme.enable();
+  }, []);
+  useEffect(() => {
+    view.getContext().then(setContext);
+  }, []);
   if (!context) {
     return " ";
   }
+
   const {
     extension: { project, issue },
   } = context;
@@ -61,10 +59,8 @@ const color = (testRunInfo) => {
   }
 };
 
-const ISSUE_PROPERTY_KEY = "test_run";
-
 const View = ({ project, issue }) => {
-  const [property, setProperty] = useIssueProperty(ISSUE_PROPERTY_KEY, {});
+  const [issueProperty, setIssueProperty] = useState();
   const [testRunInfo, setTestRunInfo] = useState();
   const [isOpen, setIsOpen] = useState(false);
   const [isInvalid, setIsInvalid] = useState(false);
@@ -72,10 +68,18 @@ const View = ({ project, issue }) => {
   const closeConfiguration = () => setIsOpen(false);
 
   useEffect(() => {
-    if (property && project && issue) {
-      invokeGetTestRunInfo(project.id, issue.id, property.run_id);
+    invoke("getIssueProperty", {
+      issueId: issue.id,
+    }).then((data) => {
+      setIssueProperty(data);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (issueProperty && project && issue) {
+      invokeGetTestRunInfo(project.id, issue.id, issueProperty.run_id);
     }
-  }, [property, project, issue]);
+  }, [issueProperty, project, issue]);
 
   useEffect(() => {
     events.on("test_run_settings.change", (data) => {
@@ -97,13 +101,27 @@ const View = ({ project, issue }) => {
     });
   };
 
+  const Link = ({ children, href }) => {
+    const handleNavigate = () => {
+      router.open(href);
+    };
+
+    return (
+      <a style={{ cursor: "pointer" }} onClick={handleNavigate}>
+        {children} <ShortcutIcon size="small" label="" />
+      </a>
+    );
+  };
+
   return testRunInfo ? (
     <>
       {testRunInfo.url && testRunInfo.name && (
         <Box padding="space.050" backgroundColor={color(testRunInfo)}>
           <>
             <Inline space="space.050" alignBlock="center" shouldWrap>
-              <Heading as="h6">{testRunInfo.name}</Heading>
+              <Text size="small" as="strong">
+                {testRunInfo.name}
+              </Text>
             </Inline>
             <Inline space="space.050" alignBlock="center" shouldWrap>
               <Lozenge appearance="success" isBold>
@@ -121,37 +139,31 @@ const View = ({ project, issue }) => {
               <Lozenge appearance="default">
                 {"Untested: " + (testRunInfo.untestedCount || 0)}
               </Lozenge>
-              <Link href={`${testRunInfo.url}`} openNewTab={true}>
-                <Icon glyph="shortcut" label="Shortcut" size="small" />
-              </Link>
+              <Link href={`${testRunInfo.url}`} target="_blank"></Link>
             </Inline>
           </>
         </Box>
       )}
       {!isOpen && (
-        <Box>
+        <Box padding="space.050">
           <Inline alignBlock="center" alignInline="end">
-            <Button
+            <IconButton
+              icon={SettingsIcon}
               appearance="subtle"
-              iconAfter="settings"
               spacing="compact"
               onClick={openConfiguration}
-            ></Button>
+            ></IconButton>
           </Inline>
         </Box>
       )}
       {isOpen && (
-        <Box
-          padding="space.050"
-          backgroundColor={"color.background.accent.gray.subtlest"}
-        >
-          <Edit
-            project={project}
-            property={property}
-            setProperty={setProperty}
-            closeConfiguration={closeConfiguration}
-          />
-        </Box>
+        <Config
+          project={project}
+          issue={issue}
+          issueProperty={issueProperty}
+          setIssueProperty={setIssueProperty}
+          closeConfiguration={closeConfiguration}
+        />
       )}
     </>
   ) : (
@@ -169,19 +181,22 @@ const View = ({ project, issue }) => {
   );
 };
 
-const FIELD_NAME_PROJECT = "FIELD_NAME_PROJECT";
-const FIELD_NAME_RUN = "FIELD_NAME_RUN";
-
-const Edit = ({ project, property, setProperty, closeConfiguration }) => {
+const Config = ({
+  project,
+  issue,
+  issueProperty,
+  setIssueProperty,
+  closeConfiguration,
+}) => {
   const [projectResponseJson, setProjectResponseJson] = useState();
   const [runResponseJson, setRunResponseJson] = useState();
   const [selectedProject, setSelectedProject] = useState();
   const [selectedRun, setSelectedRun] = useState();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    setSelectedProject(property.project);
-    setSelectedRun(property.run);
+    setSelectedProject(issueProperty.project);
+    setSelectedRun(issueProperty.run);
   }, []);
 
   useEffect(() => {
@@ -213,22 +228,26 @@ const Edit = ({ project, property, setProperty, closeConfiguration }) => {
       }))
     : [];
 
-  const { handleSubmit, register, getFieldId, formState } = useForm({});
-
-  const onSubmit = async (data) => {
-    try {
-      setIsLoading(true);
-      data["project"] = selectedProject || undefined;
-      data["run"] = selectedRun || undefined;
-      data["run_id"] = selectedRun?.value || undefined;
-      await setProperty(data);
-      events.emit("test_run_settings.change", data);
-      setIsLoading(false);
-      closeConfiguration();
-    } catch (e) {
-      setIsLoading(false);
-      console.error(e);
-    }
+  const saveConfiguration = (event) => {
+    setIsSaving(true);
+    const newIssueProperty = {
+      project: selectedProject || undefined,
+      run: selectedRun || undefined,
+      run_id: selectedRun?.value || undefined,
+    };
+    invoke("setIssueProperty", {
+      data: newIssueProperty,
+      issueId: issue.id,
+    })
+      .then((data) => {
+        if (data) {
+          setIssueProperty(newIssueProperty);
+        }
+        closeConfiguration();
+      })
+      .finally(() => {
+        setIsSaving(false);
+      });
   };
 
   const handleProjectChange = (data) => {
@@ -240,63 +259,62 @@ const Edit = ({ project, property, setProperty, closeConfiguration }) => {
   };
 
   return (
-    <Form onSubmit={handleSubmit(onSubmit)}>
-      <Text>
-        <Strong>Configuration</Strong>
-      </Text>
-      <Box padding="space.050">
-        <Label labelFor={getFieldId(FIELD_NAME_PROJECT)}>
-          Project
-          <RequiredAsterisk />
-        </Label>
-        <Select
-          {...register(FIELD_NAME_PROJECT, {})}
-          appearance="default"
-          name={FIELD_NAME_PROJECT}
-          options={projectOptions}
-          onChange={handleProjectChange}
-          defaultValue={property.project}
-          isClearable={true}
-        />
-        <Label labelFor={getFieldId(FIELD_NAME_RUN)}>
-          Test Run
-          <RequiredAsterisk />
-        </Label>
-        <Select
-          {...register(FIELD_NAME_RUN, {})}
-          appearance="default"
-          name={FIELD_NAME_RUN}
-          options={runOptions}
-          onChange={handleRunChange}
-          defaultValue={property.run}
-          isClearable={true}
-        />
+    <>
+      <Box padding="space.100"></Box>
+      <Box backgroundColor="color.background.input.hovered">
+        <Box padding="space.050">
+          <Text weight="bold">Configuration</Text>
+        </Box>
+        <Box padding="space.050">
+          <Stack>
+            <Text size="small" weight="bold">
+              Project
+            </Text>
+            <Select
+              appearance="default"
+              options={projectOptions}
+              onChange={handleProjectChange}
+              defaultValue={issueProperty.project}
+              isClearable={true}
+              spacing="compact"
+              maxMenuHeight={120}
+            />
+            <Text size="small" weight="bold">
+              Test Run
+            </Text>
+            <Select
+              appearance="default"
+              options={runOptions}
+              onChange={handleRunChange}
+              defaultValue={issueProperty.run}
+              isClearable={true}
+              spacing="compact"
+              maxMenuHeight={120}
+            />
+          </Stack>
+        </Box>
+        <Box padding="space.050">
+          <ButtonGroup>
+            <Button
+              onClick={saveConfiguration}
+              appearance="primary"
+              isLoading={isSaving}
+              isDisabled={
+                (selectedProject && !selectedRun) ||
+                (!selectedProject && selectedRun)
+              }
+            >
+              Save
+            </Button>
+            <Button onClick={closeConfiguration} appearance="subtle">
+              Cancel
+            </Button>
+          </ButtonGroup>
+        </Box>
       </Box>
-      <Box padding="space.050">
-        <ButtonGroup>
-          <LoadingButton
-            appearance="primary"
-            type="submit"
-            isLoading={isLoading}
-            isDisabled={
-              (selectedProject && !selectedRun) ||
-              (!selectedProject && selectedRun) ||
-              formState.isSubmitting
-            }
-          >
-            Save
-          </LoadingButton>
-          <Button onClick={closeConfiguration} appearance="subtle">
-            Cancel
-          </Button>
-        </ButtonGroup>
-      </Box>
-    </Form>
+      <Box padding="space.600"></Box>
+    </>
   );
 };
 
-ForgeReconciler.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
+export default App;

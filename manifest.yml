@@ -3,16 +3,14 @@ modules:
     - key: testrail-test-run-project-settings-page
       resource: main-settings-page
       title: TestRail Configuration
-      render: native
       resolver: 
         function: resolver
   jira:issuePanel:
     - key: testrail-test-run-issue-panel
       resource: main-panel
+      title: Test Run
       resolver:
         function: resolver
-      render: native
-      title: Test Run
       icon: https://imahiro-t.github.io/testrail-jira-extension/testrail.png
   jira:entityProperty:
     - key: "testrail-test-run-issue-status-property"
@@ -39,9 +37,9 @@ modules:
       handler: index.handler
 resources:
   - key: main-panel
-    path: src/frontend/panel/index.jsx
+    path: static/panel/build
   - key: main-settings-page
-    path: src/frontend/settings/index.jsx
+    path: static/settings/build
 app:
   runtime:
     name: nodejs18.x
@@ -49,8 +47,13 @@ app:
 permissions:
   external:
     fetch:
+      client:
+        - '*'
       backend:
         - '*'
+  content:
+    styles:
+      - unsafe-inline
   scopes:
     - manage:jira-project
     - read:jira-work

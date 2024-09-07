@@ -3,6 +3,7 @@ import { fetch } from "@forge/api";
 import api, { route } from "@forge/api";
 
 const PROPERTY_KEY = "testrail_settings_key";
+const ISSUE_PROPERTY_KEY = "forge-test_run";
 const TEST_RUN_RESULTS_KEY = "test_run_results";
 
 const createAuthorizationHeader = (email, apiKey) => {
@@ -71,6 +72,47 @@ const deleteSettings = async (projectId) => {
       }
     );
   if (response.status !== 204) {
+    return false;
+  }
+  return true;
+};
+
+const getIssueProperty = async (issueId) => {
+  if (!issueId) {
+    return {};
+  }
+  const response = await api
+    .asUser()
+    .requestJira(
+      route`/rest/api/3/issue/${issueId}/properties/${ISSUE_PROPERTY_KEY}`,
+      {
+        headers: {
+          Accept: "application/json",
+        },
+      }
+    );
+  if (response.status !== 200) {
+    return {};
+  }
+  return (await response.json())["value"];
+};
+
+const setIssueProperty = async (data, issueId) => {
+  const body = data;
+  const response = await api
+    .asUser()
+    .requestJira(
+      route`/rest/api/3/issue/${issueId}/properties/${ISSUE_PROPERTY_KEY}`,
+      {
+        method: "PUT",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      }
+    );
+  if (response.status !== 200 && response.status !== 201) {
     return false;
   }
   return true;
@@ -248,6 +290,16 @@ resolver.define("getProjects", async (req) => {
   const { projectId } = req.payload;
   const { hostname, email, apiKey } = await getSettings(projectId);
   return await getProjects(hostname, email, apiKey);
+});
+
+resolver.define("getIssueProperty", async (req) => {
+  const { issueId } = req.payload;
+  return await getIssueProperty(issueId);
+});
+
+resolver.define("setIssueProperty", async (req) => {
+  const { data, issueId } = req.payload;
+  return await setIssueProperty(data, issueId);
 });
 
 resolver.define("getRuns", async (req) => {
