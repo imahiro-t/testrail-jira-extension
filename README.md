@@ -8,6 +8,12 @@ Issue panel for TestRail's Test Run.
 
 ## Release Notes
 
+### 0.0.4
+
+⚡️ Add Test Run Results Summary Dashboard
+💄 replace to use custom ui
+📝 Add security policy
+
 ### 0.0.3
 
 💄 Change font size of TestRun title
