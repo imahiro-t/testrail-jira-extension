@@ -9,12 +9,10 @@ import ShortcutIcon from "@atlaskit/icon/glyph/shortcut";
 import SectionMessage from "@atlaskit/section-message";
 import Select from "@atlaskit/select";
 
-import { useThemeObserver } from "@atlaskit/tokens";
 import { invoke, view, router, events } from "@forge/bridge";
 
 const App = () => {
   const [context, setContext] = useState();
-  const theme = useThemeObserver();
   useEffect(async () => {
     await view.theme.enable();
   }, []);
