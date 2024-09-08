@@ -1,0 +1,10 @@
+export const TERM_TYPE = {
+  PAST_YEAR: "pastYear",
+  DATE_RANGE: "dateRange",
+};
+
+export const FIELD_NAME_PROJECT = "FIELD_NAME_PROJECT";
+export const FIELD_NAME_DATE_TIME_FIELD = "FIELD_NAME_DATE_TIME_FIELD";
+export const FIELD_NAME_TERM_TYPE = "FIELD_NAME_TERM_TYPE";
+export const FIELD_NAME_DATE_FROM = "FIELD_NAME_DATE_FROM";
+export const FIELD_NAME_DATE_TO = "FIELD_NAME_DATE_TO";

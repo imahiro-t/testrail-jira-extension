@@ -118,19 +118,26 @@ const setIssueProperty = async (data, issueId) => {
   return true;
 };
 
-const setTestRunResults = async (run, results, issueId) => {
-  const minimizedResults = results.map((result) => ({
-    created_on: result["created_on"],
-    status_id: result["status_id"],
-    test_id: result["test_id"],
-  }));
+const setTestRunResults = async (results, issueId) => {
+  const runResults = {
+    IssueId: issueId,
+    Passed: 0,
+    Blocked: 0,
+    Untested: 0,
+    Retest: 0,
+    Failed: 0,
+  };
+  results.forEach((result) => {
+    const status = resultTypes[result["status_id"] - 1];
+    runResults[status]++;
+  });
   const body = {
-    results: minimizedResults,
-    passed: run["passed_count"],
-    blocked: run["blocked_count"],
-    untested: run["untested_count"],
-    retest: run["retest_count"],
-    failed: run["failed_count"],
+    IssueId: runResults.IssueId,
+    Passed: runResults.Passed,
+    Blocked: runResults.Blocked,
+    Untested: runResults.Untested,
+    Retest: runResults.Retest,
+    Failed: runResults.Failed,
   };
   await api
     .asUser()
@@ -248,7 +255,7 @@ const getTestRunInfo = async (hostname, email, apiKey, runId, issueId) => {
     return {};
   }
   const results = await getResultsForRun(hostname, email, apiKey, runId);
-  await setTestRunResults(run, results, issueId);
+  await setTestRunResults(results, issueId);
   return {
     passedCount: run["passed_count"],
     blockedCount: run["blocked_count"],
@@ -318,3 +325,108 @@ resolver.define("getTestRunInfo", async (req) => {
 });
 
 export const handler = resolver.getDefinitions();
+
+// for dashboard
+
+const SEARCH_ISSUES_MAX_RESULTS = 100;
+
+const resultTypes = ["Passed", "Blocked", "Untested", "Retest", "Failed"];
+
+const clauseName = (id) => {
+  const CUSTOM_FIELD_PREFIX = "customfield_";
+  if (id.startsWith(CUSTOM_FIELD_PREFIX)) {
+    return `cf[${id.slice(CUSTOM_FIELD_PREFIX.length)}]`;
+  } else {
+    return id;
+  }
+};
+
+resolver.define("getRecentProjects", async (req) => {
+  const response = await api
+    .asUser()
+    .requestJira(route`/rest/api/3/project/recent`, {
+      headers: {
+        Accept: "application/json",
+      },
+    });
+  return await response.json();
+});
+
+resolver.define("getDateTimeFields", async (req) => {
+  const response = await api.asUser().requestJira(route`/rest/api/3/field`, {
+    headers: {
+      Accept: "application/json",
+    },
+  });
+  return (await response.json()).filter(
+    (field) => field.schema && field.schema.type === "datetime"
+  );
+});
+
+resolver.define("searchResults", async (req) => {
+  const { project, dateTimeField, dateFromStr, dateToStr } = req.payload;
+
+  const dateFrom = new Date(dateFromStr);
+  const dateTo = new Date(dateToStr);
+  dateTo.setDate(dateTo.getDate() + 1);
+
+  const jql = `project = ${project} AND (TestRunPassed > 0 OR TestRunBlocked > 0 OR TestRunRetest > 0 OR TestRunFailed > 0) AND ${clauseName(
+    dateTimeField
+  )} >= ${createTermCondition(dateFrom)} AND ${clauseName(
+    dateTimeField
+  )} < ${createTermCondition(dateTo)} ORDER BY ${clauseName(
+    dateTimeField
+  )} ASC`;
+
+  const body = {
+    fields: [dateTimeField],
+    properties: [TEST_RUN_RESULTS_KEY],
+    fieldsByKeys: false,
+    jql: jql,
+    maxResults: SEARCH_ISSUES_MAX_RESULTS,
+    startAt: 0,
+  };
+
+  const issues = await searchIssuesRecursive(body, 0, []);
+
+  return issues
+    .map((issue) => {
+      const result = issue.properties?.test_run_results ?? {};
+      if (result.IssueId) {
+        result["IssueKey"] = issue.key;
+        return result;
+      } else {
+        return null;
+      }
+    })
+    .filter((x) => !!x);
+});
+
+const searchIssuesRecursive = async (body, startAt, acc) => {
+  body.startAt = startAt;
+  const response = await api.asUser().requestJira(route`/rest/api/3/search`, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  const json = await response.json();
+  if (json.startAt + json.maxResults < json.total) {
+    return searchIssuesRecursive(
+      body,
+      startAt + SEARCH_ISSUES_MAX_RESULTS,
+      acc.concat(json.issues ?? [])
+    );
+  } else {
+    return acc.concat(json.issues ?? []);
+  }
+};
+
+const createTermCondition = (date) => {
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, "0");
+  const day = date.getDate().toString().padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
