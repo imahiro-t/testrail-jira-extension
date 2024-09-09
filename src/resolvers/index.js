@@ -118,7 +118,7 @@ const setIssueProperty = async (data, issueId) => {
   return true;
 };
 
-const setTestRunResults = async (results, issueId) => {
+const setTestRunResults = async (run, results, issueId) => {
   const runResults = {
     IssueId: issueId,
     Passed: 0,
@@ -133,9 +133,9 @@ const setTestRunResults = async (results, issueId) => {
   });
   const body = {
     IssueId: runResults.IssueId,
-    Passed: runResults.Passed,
+    Passed: run["passed_count"],
     Blocked: runResults.Blocked,
-    Untested: runResults.Untested,
+    Untested: run["untested_count"],
     Retest: runResults.Retest,
     Failed: runResults.Failed,
   };
@@ -255,7 +255,7 @@ const getTestRunInfo = async (hostname, email, apiKey, runId, issueId) => {
     return {};
   }
   const results = await getResultsForRun(hostname, email, apiKey, runId);
-  await setTestRunResults(results, issueId);
+  await setTestRunResults(run, results, issueId);
   return {
     passedCount: run["passed_count"],
     blockedCount: run["blocked_count"],
