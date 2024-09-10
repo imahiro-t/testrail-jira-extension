@@ -75,21 +75,27 @@ const View = ({ project, issue }) => {
 
   useEffect(() => {
     if (issueProperty && project && issue) {
-      invokeGetTestRunInfo(project.id, issue.id, issueProperty.run_id);
+      invokeGetTestRunInfo(
+        project.id,
+        issue.id,
+        issueProperty.run_id,
+        issueProperty.plan_id
+      );
     }
   }, [issueProperty, project, issue]);
 
   useEffect(() => {
     events.on("test_run_settings.change", (data) => {
-      invokeGetTestRunInfo(project.id, issue.id, data.run_id);
+      invokeGetTestRunInfo(project.id, issue.id, data.run_id, data.plan_id);
     });
   }, []);
 
-  const invokeGetTestRunInfo = (projectId, issueId, runId) => {
+  const invokeGetTestRunInfo = (projectId, issueId, runId, planId) => {
     invoke("getTestRunInfo", {
       projectId: projectId,
       issueId: issueId,
       runId: runId,
+      planId: planId,
     }).then((data) => {
       if (data) {
         setTestRunInfo(data);
@@ -188,13 +194,16 @@ const Config = ({
 }) => {
   const [projectResponseJson, setProjectResponseJson] = useState();
   const [runResponseJson, setRunResponseJson] = useState();
+  const [planResponseJson, setPlanResponseJson] = useState();
   const [selectedProject, setSelectedProject] = useState();
   const [selectedRun, setSelectedRun] = useState();
+  const [selectedPlan, setSelectedPlan] = useState();
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     setSelectedProject(issueProperty.project);
     setSelectedRun(issueProperty.run);
+    setSelectedPlan(issueProperty.plan);
   }, []);
 
   useEffect(() => {
@@ -212,6 +221,15 @@ const Config = ({
     }
   }, [selectedProject]);
 
+  useEffect(() => {
+    if (selectedProject) {
+      invoke("getPlans", {
+        projectId: project.id,
+        testRailProjectId: selectedProject.value,
+      }).then(setPlanResponseJson);
+    }
+  }, [selectedProject]);
+
   const projectOptions = projectResponseJson
     ? projectResponseJson.map((project) => ({
         label: project.name,
@@ -226,12 +244,21 @@ const Config = ({
       }))
     : [];
 
+  const planOptions = planResponseJson
+    ? planResponseJson.map((plan) => ({
+        label: plan.name,
+        value: plan.id,
+      }))
+    : [];
+
   const saveConfiguration = (event) => {
     setIsSaving(true);
     const newIssueProperty = {
       project: selectedProject || undefined,
       run: selectedRun || undefined,
       run_id: selectedRun?.value || undefined,
+      plan: selectedPlan || undefined,
+      plan_id: selectedPlan?.value || undefined,
     };
     invoke("setIssueProperty", {
       data: newIssueProperty,
@@ -254,6 +281,10 @@ const Config = ({
 
   const handleRunChange = (data) => {
     setSelectedRun(data);
+  };
+
+  const handlePlanChange = (data) => {
+    setSelectedPlan(data);
   };
 
   return (
@@ -288,6 +319,20 @@ const Config = ({
               isClearable={true}
               spacing="compact"
               maxMenuHeight={120}
+              isDisabled={selectedPlan}
+            />
+            <Text size="small" weight="bold">
+              Test Plan
+            </Text>
+            <Select
+              appearance="default"
+              options={planOptions}
+              onChange={handlePlanChange}
+              defaultValue={issueProperty.plan}
+              isClearable={true}
+              spacing="compact"
+              maxMenuHeight={120}
+              isDisabled={selectedRun}
             />
           </Stack>
         </Box>
@@ -298,8 +343,8 @@ const Config = ({
               appearance="primary"
               isLoading={isSaving}
               isDisabled={
-                (selectedProject && !selectedRun) ||
-                (!selectedProject && selectedRun)
+                (selectedProject && !selectedRun && !selectedPlan) ||
+                (!selectedProject && (selectedRun || selectedPlan))
               }
             >
               Save

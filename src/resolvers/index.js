@@ -118,43 +118,6 @@ const setIssueProperty = async (data, issueId) => {
   return true;
 };
 
-const setTestRunResults = async (run, results, issueId) => {
-  const runResults = {
-    IssueId: issueId,
-    Passed: 0,
-    Blocked: 0,
-    Untested: 0,
-    Retest: 0,
-    Failed: 0,
-  };
-  results.forEach((result) => {
-    const status = resultTypes[result["status_id"] - 1];
-    runResults[status]++;
-  });
-  const body = {
-    IssueId: runResults.IssueId,
-    Passed: run["passed_count"],
-    Blocked: runResults.Blocked,
-    Untested: run["untested_count"],
-    Retest: runResults.Retest,
-    Failed: runResults.Failed,
-  };
-  await api
-    .asUser()
-    .requestJira(
-      route`/rest/api/3/issue/${issueId}/properties/${TEST_RUN_RESULTS_KEY}`,
-      {
-        method: "PUT",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      }
-    );
-  return true;
-};
-
 const getUserByEmail = async (hostname, email, apiKey) => {
   if (!(hostname && email && apiKey)) {
     return null;
@@ -209,6 +172,24 @@ const getRuns = async (hostname, email, apiKey, testRailProjectId) => {
   return (await res.json())["runs"];
 };
 
+const getPlans = async (hostname, email, apiKey, testRailProjectId) => {
+  if (!(hostname && email && apiKey && testRailProjectId)) {
+    return [];
+  }
+  const authorization = createAuthorizationHeader(email, apiKey);
+  const endpoint = `https://${hostname}/index.php?/api/v2/get_plans/${testRailProjectId}`;
+  const res = await fetch(endpoint, {
+    headers: {
+      Authorization: authorization,
+      "Content-Type": "application/json",
+    },
+  });
+  if (!res.ok) {
+    return [];
+  }
+  return (await res.json())["plans"];
+};
+
 const getRun = async (hostname, email, apiKey, runId) => {
   if (!(hostname && email && apiKey && runId)) {
     return {};
@@ -225,8 +206,26 @@ const getRun = async (hostname, email, apiKey, runId) => {
     return {};
   }
   const run = await res.json();
-  run["test_run_url"] = `https://${hostname}/index.php?/runs/view/${runId}`;
   return run;
+};
+
+const getPlan = async (hostname, email, apiKey, planId) => {
+  if (!(hostname && email && apiKey && planId)) {
+    return {};
+  }
+  const authorization = createAuthorizationHeader(email, apiKey);
+  const endpoint = `https://${hostname}/index.php?/api/v2/get_plan/${planId}`;
+  const res = await fetch(endpoint, {
+    headers: {
+      Authorization: authorization,
+      "Content-Type": "application/json",
+    },
+  });
+  if (!res.ok) {
+    return {};
+  }
+  const plan = await res.json();
+  return plan;
 };
 
 const getResultsForRun = async (hostname, email, apiKey, runId) => {
@@ -245,26 +244,130 @@ const getResultsForRun = async (hostname, email, apiKey, runId) => {
     return [];
   }
   const run = await res.json();
-  run["test_run_url"] = `https://${hostname}/index.php?/runs/view/${runId}`;
-  return run["results"];
+  return run["results"] ?? [];
 };
 
-const getTestRunInfo = async (hostname, email, apiKey, runId, issueId) => {
-  const run = await getRun(hostname, email, apiKey, runId);
-  if (!run) {
-    return {};
+const getTestRunInfo = async (
+  hostname,
+  email,
+  apiKey,
+  runId,
+  planId,
+  issueId
+) => {
+  if (runId > 0) {
+    const run = await getRun(hostname, email, apiKey, runId);
+    await setTestRunResults(hostname, email, apiKey, run, issueId);
+    return {
+      passedCount: run["passed_count"],
+      blockedCount: run["blocked_count"],
+      untestedCount: run["untested_count"],
+      retestCount: run["retest_count"],
+      failedCount: run["failed_count"],
+      url: `https://${hostname}/index.php?/runs/view/${runId}`,
+      name: run["name"],
+    };
+  } else {
+    const plan = await getPlan(hostname, email, apiKey, planId);
+    await setTestRunResultsByPlan(hostname, email, apiKey, plan, issueId);
+    return {
+      passedCount: plan["passed_count"],
+      blockedCount: plan["blocked_count"],
+      untestedCount: plan["untested_count"],
+      retestCount: plan["retest_count"],
+      failedCount: plan["failed_count"],
+      url: `https://${hostname}/index.php?/plans/view/${planId}`,
+      name: plan["name"],
+    };
   }
-  const results = await getResultsForRun(hostname, email, apiKey, runId);
-  await setTestRunResults(run, results, issueId);
-  return {
-    passedCount: run["passed_count"],
-    blockedCount: run["blocked_count"],
-    untestedCount: run["untested_count"],
-    retestCount: run["retest_count"],
-    failedCount: run["failed_count"],
-    url: run["test_run_url"],
-    name: run["name"],
+};
+
+const setTestRunResults = async (hostname, email, apiKey, run, issueId) => {
+  const results = await getResultsForRun(hostname, email, apiKey, run.id);
+  const runResults = {
+    IssueId: issueId,
+    Passed: 0,
+    Blocked: 0,
+    Untested: 0,
+    Retest: 0,
+    Failed: 0,
   };
+  results.forEach((result) => {
+    const status = resultTypes[result["status_id"] - 1];
+    runResults[status]++;
+  });
+  const body = {
+    IssueId: runResults.IssueId,
+    Passed: run["passed_count"] ?? 0,
+    Blocked: runResults.Blocked,
+    Untested: run["untested_count"] ?? 0,
+    Retest: runResults.Retest,
+    Failed: runResults.Failed,
+  };
+  await api
+    .asUser()
+    .requestJira(
+      route`/rest/api/3/issue/${issueId}/properties/${TEST_RUN_RESULTS_KEY}`,
+      {
+        method: "PUT",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      }
+    );
+  return true;
+};
+
+const setTestRunResultsByPlan = async (
+  hostname,
+  email,
+  apiKey,
+  plan,
+  issueId
+) => {
+  const runs =
+    plan.entries?.reduce((acc, entry) => acc.concat(entry.runs), []) ?? [];
+  const results = await runs.reduce(async (acc, run) => {
+    const a = await acc;
+    const r = await getResultsForRun(hostname, email, apiKey, run.id);
+    return a.concat(r);
+  }, []);
+  const runResults = {
+    IssueId: issueId,
+    Passed: 0,
+    Blocked: 0,
+    Untested: 0,
+    Retest: 0,
+    Failed: 0,
+  };
+  results.forEach((result) => {
+    const status = resultTypes[result["status_id"] - 1];
+    runResults[status]++;
+  });
+  const body = {
+    IssueId: runResults.IssueId,
+    Passed: plan["passed_count"] ?? 0,
+    Blocked: runResults.Blocked,
+    Untested: plan["untested_count"] ?? 0,
+    Retest: runResults.Retest,
+    Failed: runResults.Failed,
+  };
+  await api
+    .asUser()
+    .requestJira(
+      route`/rest/api/3/issue/${issueId}/properties/${TEST_RUN_RESULTS_KEY}`,
+      {
+        method: "PUT",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      }
+    );
+  return true;
 };
 
 const resolver = new Resolver();
@@ -315,13 +418,19 @@ resolver.define("getRuns", async (req) => {
   return await getRuns(hostname, email, apiKey, testRailProjectId);
 });
 
+resolver.define("getPlans", async (req) => {
+  const { projectId, testRailProjectId } = req.payload;
+  const { hostname, email, apiKey } = await getSettings(projectId);
+  return await getPlans(hostname, email, apiKey, testRailProjectId);
+});
+
 resolver.define("getTestRunInfo", async (req) => {
-  const { projectId, issueId, runId } = req.payload;
+  const { projectId, issueId, runId, planId } = req.payload;
   const { hostname, email, apiKey } = await getSettings(projectId);
   if (!(hostname && email && apiKey)) {
     return false;
   }
-  return await getTestRunInfo(hostname, email, apiKey, runId, issueId);
+  return await getTestRunInfo(hostname, email, apiKey, runId, planId, issueId);
 });
 
 export const handler = resolver.getDefinitions();
