@@ -6,6 +6,8 @@ const PROPERTY_KEY = "testrail_settings_key";
 const ISSUE_PROPERTY_KEY = "forge-test_run";
 const TEST_RUN_RESULTS_KEY = "test_run_results";
 
+const resultTypes = ["Passed", "Blocked", "Untested", "Retest", "Failed"];
+
 const createAuthorizationHeader = (email, apiKey) => {
   return `Basic ${btoa(email + ":" + apiKey)}`;
 };
@@ -299,10 +301,13 @@ const setTestRunResults = async (hostname, email, apiKey, run, issueId) => {
   const body = {
     IssueId: runResults.IssueId,
     Passed: run["passed_count"] ?? 0,
-    Blocked: runResults.Blocked,
+    Blocked: run["blocked_count"] ?? 0,
     Untested: run["untested_count"] ?? 0,
-    Retest: runResults.Retest,
-    Failed: runResults.Failed,
+    Retest: run["retest_count"] ?? 0,
+    Failed: run["failed_count"] ?? 0,
+    BlockedTotal: runResults.Blocked,
+    RetestTotal: runResults.Retest,
+    FailedTotal: runResults.Failed,
   };
   await api
     .asUser()
@@ -349,10 +354,13 @@ const setTestRunResultsByPlan = async (
   const body = {
     IssueId: runResults.IssueId,
     Passed: plan["passed_count"] ?? 0,
-    Blocked: runResults.Blocked,
+    Blocked: plan["blocked_count"] ?? 0,
     Untested: plan["untested_count"] ?? 0,
-    Retest: runResults.Retest,
-    Failed: runResults.Failed,
+    Retest: plan["retest_count"] ?? 0,
+    Failed: plan["failed_count"] ?? 0,
+    BlockedTotal: runResults.Blocked,
+    RetestTotal: runResults.Retest,
+    FailedTotal: runResults.Failed,
   };
   await api
     .asUser()
@@ -439,8 +447,6 @@ export const handler = resolver.getDefinitions();
 
 const SEARCH_ISSUES_MAX_RESULTS = 100;
 
-const resultTypes = ["Passed", "Blocked", "Untested", "Retest", "Failed"];
-
 const clauseName = (id) => {
   const CUSTOM_FIELD_PREFIX = "customfield_";
   if (id.startsWith(CUSTOM_FIELD_PREFIX)) {
@@ -500,9 +506,14 @@ resolver.define("searchResults", async (req) => {
 
   return issues
     .map((issue) => {
-      const result = issue.properties?.test_run_results ?? {};
+      const result = issue.properties
+        ? issue.properties[TEST_RUN_RESULTS_KEY] ?? {}
+        : {};
       if (result.IssueId) {
         result["IssueKey"] = issue.key;
+        result["Blocked"] = result.BlockedTotal ?? result.Blocked ?? 0;
+        result["Retest"] = result.RetestTotal ?? result.Retest ?? 0;
+        result["Failed"] = result.FailedTotal ?? result.Failed ?? 0;
         return result;
       } else {
         return null;
