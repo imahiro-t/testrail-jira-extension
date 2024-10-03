@@ -27,6 +27,9 @@ modules:
       entityType: "issue"
       propertyKey: test_run_results
       values:
+        - path: title
+          type: text
+          searchAlias: TestRunTitle
         - path: passed
           type: number
           searchAlias: TestRunPassed

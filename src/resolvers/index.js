@@ -300,6 +300,7 @@ const setTestRunResults = async (hostname, email, apiKey, run, issueId) => {
   });
   const body = {
     IssueId: runResults.IssueId,
+    Title: run["name"] ?? "",
     Passed: run["passed_count"] ?? 0,
     Blocked: run["blocked_count"] ?? 0,
     Untested: run["untested_count"] ?? 0,
@@ -353,6 +354,7 @@ const setTestRunResultsByPlan = async (
   });
   const body = {
     IssueId: runResults.IssueId,
+    Title: plan["name"] ?? "",
     Passed: plan["passed_count"] ?? 0,
     Blocked: plan["blocked_count"] ?? 0,
     Untested: plan["untested_count"] ?? 0,
