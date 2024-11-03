@@ -8,6 +8,13 @@ Issue panel for TestRail's Test Run.
 
 ## Release Notes
 
+### 0.0.6
+
+💄 Change icon image
+🐛 fix to separate result count between dashboard and query
+✨ Add entity property for title to search in JQL
+✨ show recently used project in setting
+
 ### 0.0.5
 
 ✨ Add support for Test Plan
