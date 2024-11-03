@@ -5,6 +5,7 @@ import api, { route } from "@forge/api";
 const PROPERTY_KEY = "testrail_settings_key";
 const ISSUE_PROPERTY_KEY = "forge-test_run";
 const TEST_RUN_RESULTS_KEY = "test_run_results";
+const RECENTLY_USED_PROJECT_KEY = "recently_used_project";
 
 const resultTypes = ["Passed", "Blocked", "Untested", "Retest", "Failed"];
 
@@ -79,7 +80,7 @@ const deleteSettings = async (projectId) => {
   return true;
 };
 
-const getIssueProperty = async (issueId) => {
+const getIssueProperty = async (projectId, issueId) => {
   if (!issueId) {
     return {};
   }
@@ -93,13 +94,29 @@ const getIssueProperty = async (issueId) => {
         },
       }
     );
-  if (response.status !== 200) {
-    return {};
-  }
-  return (await response.json())["value"];
+  const result =
+    response.status !== 200 ? {} : (await response.json())["value"];
+  try {
+    if (!result.project) {
+      const response = await api
+        .asUser()
+        .requestJira(
+          route`/rest/api/3/project/${projectId}/properties/${RECENTLY_USED_PROJECT_KEY}`,
+          {
+            headers: {
+              Accept: "application/json",
+            },
+          }
+        );
+      if (response.status === 200) {
+        result["project"] = (await response.json())["value"]["project"];
+      }
+    }
+  } catch (e) {}
+  return result;
 };
 
-const setIssueProperty = async (data, issueId) => {
+const setIssueProperty = async (data, projectId, issueId) => {
   const body = data;
   const response = await api
     .asUser()
@@ -117,6 +134,23 @@ const setIssueProperty = async (data, issueId) => {
   if (response.status !== 200 && response.status !== 201) {
     return false;
   }
+  try {
+    if (body.project) {
+      await api
+        .asUser()
+        .requestJira(
+          route`/rest/api/3/project/${projectId}/properties/${RECENTLY_USED_PROJECT_KEY}`,
+          {
+            method: "PUT",
+            headers: {
+              Accept: "application/json",
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ project: body.project }),
+          }
+        );
+    }
+  } catch (e) {}
   return true;
 };
 
@@ -413,13 +447,13 @@ resolver.define("getProjects", async (req) => {
 });
 
 resolver.define("getIssueProperty", async (req) => {
-  const { issueId } = req.payload;
-  return await getIssueProperty(issueId);
+  const { projectId, issueId } = req.payload;
+  return await getIssueProperty(projectId, issueId);
 });
 
 resolver.define("setIssueProperty", async (req) => {
-  const { data, issueId } = req.payload;
-  return await setIssueProperty(data, issueId);
+  const { data, projectId, issueId } = req.payload;
+  return await setIssueProperty(data, projectId, issueId);
 });
 
 resolver.define("getRuns", async (req) => {
@@ -439,6 +473,9 @@ resolver.define("getTestRunInfo", async (req) => {
   const { hostname, email, apiKey } = await getSettings(projectId);
   if (!(hostname && email && apiKey)) {
     return false;
+  }
+  if (!(runId || planId)) {
+    return {};
   }
   return await getTestRunInfo(hostname, email, apiKey, runId, planId, issueId);
 });

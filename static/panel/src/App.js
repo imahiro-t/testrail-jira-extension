@@ -67,6 +67,7 @@ const View = ({ project, issue }) => {
 
   useEffect(() => {
     invoke("getIssueProperty", {
+      projectId: project.id,
       issueId: issue.id,
     }).then((data) => {
       setIssueProperty(data);
@@ -262,6 +263,7 @@ const Config = ({
     };
     invoke("setIssueProperty", {
       data: newIssueProperty,
+      projectId: project.id,
       issueId: issue.id,
     })
       .then((data) => {
