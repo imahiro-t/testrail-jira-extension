@@ -8,6 +8,10 @@ Issue panel for TestRail's Test Run.
 
 ## Release Notes
 
+### 0.0.7
+
+- 🐛 fix to retrieve both date and datetime fields
+
 ### 0.0.6
 
 💄 Change icon image
